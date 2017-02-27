@@ -280,7 +280,7 @@ class EventHandler:
             except StopIteration:
                 break
 
-            #Process new events froms tream
+            #Process new events from stream
             if evt:
 
                 #On button event
@@ -294,6 +294,18 @@ class EventHandler:
 
                 #On rotation event
                 else:
+
+
+    @asyncio.coroutine
+    def rotate(self, value):
+
+
+    @asyncio.coroutine
+    def pressed(self):
+
+
+    @asyncio.coroutine
+    def released(self, time):
 
 
     def _clear(self):
