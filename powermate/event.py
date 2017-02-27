@@ -1,7 +1,7 @@
 import queue
 import struct
+import asyncio
 import logging
-import contextlib
 import collections
 
 from enum import Enum
@@ -113,7 +113,7 @@ class LedEvent(Event):
 
     asleep
 
-    awake = 
+    awake : 
     """
     def __init__(self, brightness=MAX_BRIGHTNESS, speed=0,
            pulse_type=0, asleep=0, awake=0):
@@ -209,42 +209,75 @@ class EventStream:
     def __iter__(self):
         data = b''
 
-        with open(path, 'rb') as stream:
+        #Open file stream
+        with open(path, 'wb') as stream:
+            
             #Continually monitor USB
             while True:
 
-                #Check to see if we need to send a command to the PowerMate
-                sent = yield
-                
-                #Process Output Event
-                if sent:
-                    
-                    #Stop loop if instructed
-                    if sent.type = EventType.STOP:
-                        raise StopIteration
-
-                    #Otherwise push raw event output to  
-                    else:
-                        with open(path, 'wb') as output:
-                            output.write(sent.raw)
-                            output.flush()
-                
-                #Read data in EventSize chunks
-                data += stream.read(self._event_size)
-                
                 #When we have a full event
                 if len(data) >= EVENT_SIZE:
                     #Create Event object, and delete from collected stream
                     event = Event.fromraw(data[:self._event_size])
                     data  = data[self._event_size:]
-                    yield event
 
+                #Otherwise send a blank event
+                else:
+                   event = None
 
+                #Send an event and check response
+                ret = yield event
 
+                if ret:
+                    #Stop if stop signal was sent
+                    if ret.type == EventType.STOP:
+                        raise StopIteration
+
+                    #Otherwise, send to Powermate stream
+                    else:
+                        stream.write(ret.raw)
+                        stream.flush()
+                
 
 class EventHandler:
 
+    _event_size = EVENT_SIZE
 
+    def __init__(self, path, loop=None)
+
+        #Create Source
+        self._source = EventStream(path)
+
+        #Create asyncio event loop
+        if loop is None:
+            loop = asyncio.get_event_loop()
+        self.loop = loop
+
+        #Keep asyncio task to handle exceptions
+        self._task = None
+
+
+    @asyncio.coroutine
+    def _run(self):
+
+        response_stack = collections.deque([None])
+
+        while True:
+            yield from asyncio.sleep(0.0001, loop=self.loop)
+
+            try:
+                ret = resp_stack.pop()
+                msg = self._source.send(ret
+    def __call__():
+        #Create task and kick off loop
+        self._task = self.loop.create_task(self._run())
+        self.loop.run_forever()
+
+        #Handle any exception raised during the loop
+        if self._task.done and not self._task.cancelled():
+            exc = self._task.exception()
+            if exc is not None:
+                raise exc
 
 class EventQueue(object):
   """A thread-safe event queue which registers any number of listeners
