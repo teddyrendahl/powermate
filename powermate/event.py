@@ -1,3 +1,4 @@
+import os
 import queue
 import struct
 import asyncio
@@ -12,8 +13,6 @@ EVENT_FORMAT = 'llHHi'
 EVENT_SIZE   = struct.calcsize(EVENT_FORMAT)
 
 MSC_PULSELED    = 0x01
-MAX_BRIGHTNESS  = 255
-MAX_PULSE_SPEED = 255
 
 class EventType(Enum):
     """
@@ -70,16 +69,16 @@ class Event:
     def stop(cls):
         """
         Return an Event to stop the EventStream
-        
+
         Returns
         -------
         event : :class:`.LedEvent`
         """
         return cls(0, 0,  EventType.STOP, 0, 0)
 
-    
+
     @classmethod
-    def fromraw(cls, data):
+    def from_raw(cls, data):
         """
         Generate an ``Event`` object from packed binary data
 
@@ -110,8 +109,8 @@ class LedEvent(Event):
     Parameters
     ----------
     brightness : int
-    
-    speed
+
+    speed : int
 
     pulse_type
 
@@ -119,9 +118,12 @@ class LedEvent(Event):
 
     awake : 
     """
-    def __init__(self, brightness=MAX_BRIGHTNESS, speed=0,
+    MAX_BRIGHTNESS  = 255
+    MAX_PULSE_SPEED = 255
+
+    def __init__(self, brightness=0, speed=0,
            pulse_type=0, asleep=0, awake=0):
-        self.brightness = brightness
+        self.brightness = brightness or self.MAX_BRIGHTNESS
         self.speed      = speed
         self.pulse_type = pulse_type
         self.asleep     = asleep
@@ -132,7 +134,7 @@ class LedEvent(Event):
     @property
     def value(self):
         """
-        Packed binary instruction for the Powermate LED  
+        Packed binary instruction for the Powermate LED
         """
         return (self.brightness |
                (self.speed << 8) |
@@ -145,31 +147,31 @@ class LedEvent(Event):
     def pulse(cls):
         """
         Return an Event to pulse the Powermate
-        
+
         Returns
         -------
         event : :class:`.LedEvent`
         """
-        return cls(speed=MAX_PULSE_SPEED, pulse_type=2, asleep=1, awake=1)
+        return cls(speed=self.MAX_PULSE_SPEED, pulse_type=2, asleep=1, awake=1)
 
 
     @classmethod
     def max(cls):
         """
         Return an Event to set the Powermate to the maximum brightness
-        
+
         Returns
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=MAX_BRIGHTNESS)
+        return cls(brightness=self.MAX_BRIGHTNESS)
 
 
     @classmethod
     def off(cls):
         """
         Return an event to turn off the Powermate LED
-        
+
         Returns
         -------
         event : :class:`.LedEvent`
@@ -192,7 +194,7 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=int(percent * MAX_BRIGHTNESS))
+        return cls(brightness=int(percent * self.MAX_BRIGHTNESS))
 
 
 class EventStream:
@@ -218,14 +220,16 @@ class EventStream:
 
         #Open file stream
         with open(path, 'wb') as stream:
- 
+            #Always start from EOF
+            path.seek(0, os.SEEK_END)
+
             #Continually monitor USB
             while True:
 
                 #When we have a full event
                 if len(data) >= EVENT_SIZE:
                     #Create Event object, and delete from collected stream
-                    event = Event.fromraw(data[:self._event_size])
+                    event = Event.from_raw(data[:self._event_size])
                     data  = data[self._event_size:]
 
                 #Otherwise send a blank event
@@ -244,17 +248,16 @@ class EventStream:
                     else:
                         stream.write(ret.raw)
                         stream.flush()
-                
 
 class EventHandler:
 
     _event_size  = EVENT_SIZE
-    
+
     #Internal State Variables
     _depressed   = None
     _rotation    = None
     _pressed     = False
-    
+
     def __init__(self, path, loop=None)
 
         #Create Source
@@ -289,8 +292,8 @@ class EventHandler:
 
                 #On button event
                 if evt.type = EventType.PUSH:
-                    
-                    t = (evt.tv_sec *10**3) + (evt.tv_usec * 10**-3)
+
+                    t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
 
                     #On press
                     if not evt.value:
@@ -304,7 +307,7 @@ class EventHandler:
 
                     #On release
                     else:
-                        
+
                         #Change internal state to released
                         self._pressed   = False
 
@@ -334,7 +337,7 @@ class EventHandler:
 
             except KeyboardInterrupt:
                 print("Manual interuption of PowerMate run loop") 
-            
+
             #Cleanup
             finally:
                 self.loop.stop()
@@ -397,7 +400,10 @@ class EventHandler:
 
 
     def __call__():
+
+        #Clear all metadata from previous runs
         self._clear()
+
         #Create task and kick off loop
         self._task = self.loop.create_task(self._run())
         self.loop.run_forever()
