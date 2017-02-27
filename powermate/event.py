@@ -19,11 +19,13 @@ class EventType(Enum):
     """
     Types of Events
     """
+    #Internal
     PUSH   = 0x01
     ROTATE = 0x02
     MISC   = 0x04
+    #API Defined
     STOP   = 0x06
-
+    INT    = 0x08
 
 class Event:
     """
@@ -246,8 +248,13 @@ class EventStream:
 
 class EventHandler:
 
-    _event_size = EVENT_SIZE
-
+    _event_size  = EVENT_SIZE
+    
+    #Internal State Variables
+    _depressed   = None
+    _rotation    = None
+    _pressed     = False
+    
     def __init__(self, path, loop=None)
 
         #Create Source
@@ -268,51 +275,125 @@ class EventHandler:
 
         last_result = None
 
-        while True:
+        try:
 
             yield from asyncio.sleep(0.0001, loop=self.loop)
 
             #Send any responses from previous events back to stream
-            try:
-                ret = resp_stack.pop()
-                evt = self._source.send(last_result)
+            ret = resp_stack.pop()
+            evt = self._source.send(last_result)
 
-            except StopIteration:
-                break
 
             #Process new events from stream
             if evt:
 
                 #On button event
-                if evt.push:
+                if evt.type = EventType.PUSH:
+                    
+                    t = (evt.tv_sec *10**3) + (evt.tv_usec * 10**-3)
 
                     #On press
-                    if evt.
-                        last_result = yield from
+                    if not evt.value:
+                        #Change internal state to pressed
+                        self._pressed   = True
+                        self._rotated   = False
+                        self._depressed = t
+
+                        #Trigger pressed coroutine
+                        last_result = yield from self.pressed()
 
                     #On release
+                    else:
+                        
+                        #Change internal state to released
+                        self._pressed   = False
+
+                        #Ignore if any rotation has happened
+                        if self._rotated:
+                            return
+
+                        #Trigger release coroutine
+                        else:
+                            #Store previous depressed time, and wipe away
+                            elapsed, self._depressed = t - self._depressed, None
+                            #Trigger released coroutine
+                            last_result = yield from self.released(elapsed)
 
                 #On rotation event
-                else:
+                elif evt.type == EventType.ROTATE:
+                    #Change internal state to rotated
+                    self._rotated = True
+                    #Trigger rotate coroutine
+                    last_result = yield from self.rotate(evt.value, pressed=self._pressed)
 
+                else:
+                    raise EventNotImplemented(evt.__dict__)
+
+            except StopIteration:
+                pass
+
+            except KeyboardInterrupt:
+                print("Manual interuption of PowerMate run loop") 
+            
+            #Cleanup
+            finally:
+                self.loop.stop()
 
     @asyncio.coroutine
-    def rotate(self, value):
+    def rotated(self, value, pressed=False):
+        """
+        Desired response upon rotation
+
+        Parameters
+        ----------
+        value : int
+            Amount of rotation seen by the Powermate
+
+        pressed : bool
+            Whether the button was depressed when rotated
+        """
+        logger.debug('Powermate rotated {} while pressed : {}'
+                     ''.format(value, pressed))
 
 
     @asyncio.coroutine
     def pressed(self):
+        """
+        Desired respsone upon button press
+        """
+        logger.debug('Powermate pressed')
 
 
     @asyncio.coroutine
     def released(self, time):
+        """
+        Desired response upon button release
+        
+        Parameters
+        ----------
+        time ; float
+            The amount of time in milliseconds that the button has been
+            depressed
+        """
+        logger.debug('Powermate released after {} ms'.format(time))
+
+
+    @asyncio.coroutine
+    def stop(self):
+        """
+        Stop the current run
+        """
+        return Event.stop()
 
 
     def _clear(self):
         """
         Clear all metadata from previous run
         """
-        self._task = None
+        self._task      = None
+        self._rotated   = False
+        self._pressed   = False
+        self._depressed = None
 
 
     def __call__():
@@ -326,106 +407,6 @@ class EventHandler:
             exc = self._task.exception()
             if exc is not None:
                 raise exc
-
-class EventQueue(object):
-  """A thread-safe event queue which registers any number of listeners
-  for an event source.
-
-  This will store a small number of items in order for a listener to read,
-  and they are then available to iterate over. If more events than the
-  specified maximum are in a listener's queue, it will stop enqueueing new
-  events. If for instance a listener takes a long break and max_queue_size
-  is K, it will read the next K events after the sleep started (the oldest
-  K events not read) and then continue to read new events. Any intermediate
-  events will be dropped for that listener.
-
-  Listeners may be simply registered by iterating over the queue, or
-  through the .iterate method for more configuration.
-  """
-  def __init__(self, source, max_queue_size=MAX_QUEUE_SIZE):
-    self.source = source
-    self.queues = collections.OrderedDict()
-    self._lock = threading.Lock()
-    self.max_queue_size = max_queue_size
-
-  def __iter__(self):
-    return self.iterate()
-
-  def iterate(self, max_queue_size=None):
-    """Register a listener on the queue, and retrieve an iterator for them."""
-    q = queue.Queue(max_queue_size or self.max_queue_size)
-    key = object()
-    with self._lock:
-      self.queues[key] = q
-    def iter_queue():
-      try:
-        while True:
-          yield q.get()
-      except GeneratorExit:
-        with self._lock:
-          del self.queues[key]
-
-    return iter_queue()
-
-  def watch(self):
-    """Watch the underlying event source for events and
-       send them to each registered queue."""
-    for event in self.source:
-      with self._lock:
-        active_queues = list(self.queues.values())
-      for q in active_queues:
-        try:
-          q.put_nowait(event)
-        except queue.Full:
-          pass
-
-  def send(self, event):
-    """Send an event to the underlying event source."""
-    self.source.send(event)
-
-
-class EventHandler(object):
-  def handle_events(self, source):
-    for event in source:
-      try:
-        return_event = self.handle_event(event)
-      except EventNotImplemented:
-        pass
-      except Exception as e:
-        traceback.print_exc()
-      else:
-        if return_event is not None:
-          source.send(return_event)
-
-  def handle_event(self, event):
-    raise EventNotImplemented
-
-  def push_rotate(self, rotation):
-    raise EventNotImplemented('push_rotate')
-
-
-class AsyncFileEventDispatcher(object):
-  def __init__(self, path, event_size=EVENT_SIZE):
-    self.__filesource = FileEventSource(path, event_size)
-    self.__source = EventQueue(self.__filesource)
-    self.__threads = []
-
-  def add_listener(self, event_handler):
-    thread = threading.Thread(target=event_handler.handle_events,
-                              args=(self.__source,))
-    thread.daemon = True
-    thread.start()
-    self.__threads.append(thread)
-
-  def run(self):
-    self.__source.watch()
-
-
-class PowerMateBase(AsyncFileEventDispatcher, PowerMateEventHandler):
-  def __init__(self, path, long_threshold=1000):
-    AsyncFileEventDispatcher.__init__(self, path)
-    PowerMateEventHandler.__init__(self, long_threshold)
-    self.add_listener(self)
 
 
 
