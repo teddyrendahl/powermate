@@ -35,13 +35,13 @@ class Event:
     tv_sec : int
         Number of elapsed whole seconds
 
-    tv_usec : int 
+    tv_usec : int
         Remainder of elapsed time, expressed in microseconds
 
     type: :class:`EventType`
-        Type of event         
-        
-    code: 
+        Type of event
+
+    code:
         Associated event code
 
     value: int
@@ -230,6 +230,7 @@ class EventStream:
                 if len(data) >= EVENT_SIZE:
                     #Create Event object, and delete from collected stream
                     event = Event.from_raw(data[:self._event_size])
+                    logger.debug("Received event {} ...".format(event))
                     data  = data[self._event_size:]
 
                 #Otherwise send a blank event
@@ -240,6 +241,7 @@ class EventStream:
                 ret = yield event
 
                 if ret:
+                    logger.debug("Sending event {} ...".format(event))
                     #Stop if stop signal was sent
                     if ret.type == EventType.STOP:
                         raise StopIteration
@@ -290,6 +292,7 @@ class EventHandler:
             #Process new events from stream
             if evt:
 
+                logger.debug('Proccessing event')
                 #On button event
                 if evt.type = EventType.PUSH:
 
@@ -307,7 +310,6 @@ class EventHandler:
 
                     #On release
                     else:
-
                         #Change internal state to released
                         self._pressed   = False
 
@@ -336,11 +338,12 @@ class EventHandler:
                 pass
 
             except KeyboardInterrupt:
-                print("Manual interuption of PowerMate run loop") 
+                print("Manual interuption of PowerMate run loop")
 
             #Cleanup
             finally:
                 self.loop.stop()
+
 
     @asyncio.coroutine
     def rotated(self, value, pressed=False):
@@ -371,7 +374,7 @@ class EventHandler:
     def released(self, time):
         """
         Desired response upon button release
-        
+
         Parameters
         ----------
         time ; float
