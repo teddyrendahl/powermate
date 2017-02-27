@@ -3,8 +3,10 @@ import struct
 import asyncio
 import logging
 import collections
-
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+
 
 EVENT_FORMAT = 'llHHi'
 EVENT_SIZE   = struct.calcsize(EVENT_FORMAT)
@@ -195,6 +197,9 @@ class EventStream:
     """
     Event Stream from the Powermate
 
+    The EventStream provides a generator object that receivies and sends data
+    from the Powermate.
+
     Parameters
     ----------
     path : str
@@ -211,7 +216,7 @@ class EventStream:
 
         #Open file stream
         with open(path, 'wb') as stream:
-            
+ 
             #Continually monitor USB
             while True:
 
@@ -255,20 +260,51 @@ class EventHandler:
 
         #Keep asyncio task to handle exceptions
         self._task = None
+        self._response_stack = collections.deque([None])
 
 
     @asyncio.coroutine
     def _run(self):
 
-        response_stack = collections.deque([None])
+        last_result = None
 
         while True:
+
             yield from asyncio.sleep(0.0001, loop=self.loop)
 
+            #Send any responses from previous events back to stream
             try:
                 ret = resp_stack.pop()
-                msg = self._source.send(ret
+                evt = self._source.send(last_result)
+
+            except StopIteration:
+                break
+
+            #Process new events froms tream
+            if evt:
+
+                #On button event
+                if evt.push:
+
+                    #On press
+                    if evt.
+                        last_result = yield from
+
+                    #On release
+
+                #On rotation event
+                else:
+
+
+    def _clear(self):
+        """
+        Clear all metadata from previous run
+        """
+        self._task = None
+
+
     def __call__():
+        self._clear()
         #Create task and kick off loop
         self._task = self.loop.create_task(self._run())
         self.loop.run_forever()
