@@ -214,12 +214,31 @@ class EventStream:
     def __init__(self, path):
         self.path
 
+    def send(self, evt):
+        """
+        Send an event to the Powermate without viewing respsonse
+
+        Parameters
+        ----------
+        evt : :class:`.Event`
+            Sent event
+        """
+        if not isinstance(evt, Event):
+            raise TypeError(evt)
+
+        logger.debug("Sending event {} ...".format(event))
+
+        with open(path, 'wb') as stream:
+            stream.write(evt.raw)
+            stream.flush()
+
+
 
     def __iter__(self):
         data = b''
 
         #Open file stream
-        with open(path, 'wb') as stream:
+        with open(path, 'rb') as stream:
             #Always start from EOF
             path.seek(0, os.SEEK_END)
 
@@ -241,15 +260,15 @@ class EventStream:
                 ret = yield event
 
                 if ret:
-                    logger.debug("Sending event {} ...".format(event))
                     #Stop if stop signal was sent
                     if ret.type == EventType.STOP:
+                        logger.info("Received an event to stop the stream.")
                         raise StopIteration
 
-                    #Otherwise, send to Powermate stream
+                    #Otherwise, send to PowerMate stream
                     else:
-                        stream.write(ret.raw)
-                        stream.flush()
+                        self.send(evt)
+
 
 class EventHandler:
 
