@@ -245,6 +245,17 @@ class EventStream:
             #Continually monitor USB
             while True:
 
+                try:
+                    data += stream.read(self._event_size)
+
+                except OSError as e:
+
+                    if e.errno == 11:
+                        raise ConnectionError('PowerMate disconnected')
+
+                    else:
+                        raise
+
                 #When we have a full event
                 if len(data) >= EVENT_SIZE:
                     #Create Event object, and delete from collected stream
