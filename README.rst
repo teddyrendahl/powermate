@@ -1,15 +1,47 @@
 Powermate
 =========
-A small Python driver for the [Griffin Powermate](https://store.griffintechnology.com/powermate) 
+A small Python driver for using the `Griffin Powermate <https://store.griffintechnology.com/powermate>` in Linux 
 
-![Griffin Powermate](https://store.griffintechnology.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/n/a/na16029_powermate_1.jpg)
+.. image:: https://store.griffintechnology.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/n/a/na16029_powermate_1.jpg
+
 
 Setup
-=====
+-----
+In order to read and write to the Powermate event files on Linux, you will need
+to add the following ``udev`` rule. The choice of symlink name is up to you,
+but should be memorable as this how you point the API to the correct USB port
 
-In order to read and write to the Powermate event files on linux, you will need
-to do the following (ymmv, but this should work on most modern distros).
+.. code::
 
     # /etc/udev/rules.d/40-powermate.rules
     ATTRS{product}=="Griffin PowerMate" GROUP="plugdev", SYMLINK+="input/powermate", MODE="660"
-```
+
+Use Cases
+---------
+The main class in the powermate driver is the :class:`powermate.PowerMateBase`.
+This wraps the event handling streams into rewritable Python functions. Simply
+create a new class who inherits from :class:`.PowerMateBase` and rewrite the
+methods :meth:`.rotated`, :meth:`.pressed`: and :meth:`.released` to map the
+PowerMate actions to commands. It is important to note that these are used in
+the ``asycnio`` run loop, so they must have the ``@asyncio.coroutine`` function
+wrap
+
+.. literalinclude:: examples/simple.py
+    :caption: Example
+    :pyobject: SimplePowerMate
+    :linenos:
+
+Complex interactions between driver actions and the PowerMate are possible by
+creating coroutines that return events. For instance, the ``pressed`` function
+in the above example sends an :meth:`.Event.stop` back to the PowerMate to
+indicate we are done listening to the USB connection.
+
+After you have created your PowerMate, simply call the class and the listener
+will begin watching the USB connection for PowerMate events
+
+.. code::
+
+    #Instantiate
+    pm = SimplePowerMate('input/powermate')
+    #Run
+    pm()

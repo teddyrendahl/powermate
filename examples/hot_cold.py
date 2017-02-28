@@ -22,16 +22,27 @@ class HotPowerMate(PowerMateBase):
         self.value    = 0
         self.target   = target
 
+        #Turn off LED when not running
+        self.on_exit()
+
+
+    def on_start(self):
         #Set the LED to the starting brightness
         self._stream.send(self.warmth)
 
 
+    def on_exit(self):
+        #Turn off LED
+        self.illuminate(0)
+
+
     @asyncio.coroutine
-    def rotate(self, value, pressed=False):
+    def rotated(self, value, pressed=False):
         """
         Reimplementation of rotate method to reset the LED on every rotation.
         If the button is pressed while rotated move twice as fast
         """
+        super().rotated(val, pressed=pressed)
         if pressed:
             value *= self.press_multiplier
 
@@ -45,6 +56,7 @@ class HotPowerMate(PowerMateBase):
         Reimplementation of button release to stop the demo if button is
         pressed for more than 2 seconds
         """
+        super().released(elapsed)
         if elapsed > 2000:
             return Event.stop()
 

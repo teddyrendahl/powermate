@@ -7,7 +7,6 @@ PowerMate Python Driver
    :caption: PowerMate:
 
    powermate.rst
-   implementation.rst
    events.rst
 
 
