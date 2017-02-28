@@ -65,7 +65,7 @@ class Event:
                        self.type.value(), self.code, self.value)
 
 
-    @classmethod(cls)
+    @classmethod
     def stop(cls):
         """
         Return an Event to stop the EventStream
@@ -91,8 +91,8 @@ class Event:
         -------
         event : :class:`.Event`
         """
-        tv_sec, tv_usec, EventType(type), code, value = struct.unpack(EVENT_FORMAT, data)
-        return cls(tv_sec, tv_usec, type, code, value)
+        tv_sec, tv_usec, type, code, value = struct.unpack(EVENT_FORMAT, data)
+        return cls(tv_sec, tv_usec, EventType(type), code, value)
 
 
     def __repr__(self):
@@ -194,7 +194,7 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=int(percent * self.MAX_BRIGHTNESS))
+        return cls(brightness=int(percent/100. * self.MAX_BRIGHTNESS))
 
 
 class EventStream:
@@ -214,6 +214,7 @@ class EventStream:
     def __init__(self, path):
         self.path
 
+
     def send(self, evt):
         """
         Send an event to the Powermate without viewing respsonse
@@ -231,7 +232,6 @@ class EventStream:
         with open(path, 'wb') as stream:
             stream.write(evt.raw)
             stream.flush()
-
 
 
     def __iter__(self):
@@ -271,7 +271,19 @@ class EventStream:
 
 
 class EventHandler:
+    """
+    Handler for streaming Powermate Events
 
+    Parameters
+    ----------
+    path : str
+        Filepath to PowerMate event stream
+
+    loop : ``asyncio.event_loop``, optional
+        Optional existing event loop if you would like to integrate multiple
+        async objects
+    """
+    #Default event size
     _event_size  = EVENT_SIZE
 
     #Internal State Variables
@@ -279,7 +291,7 @@ class EventHandler:
     _rotation    = None
     _pressed     = False
 
-    def __init__(self, path, loop=None)
+    def __init__(self, path, loop=None):
 
         #Create Source
         self._source = EventStream(path)
@@ -313,7 +325,7 @@ class EventHandler:
 
                 logger.debug('Proccessing event')
                 #On button event
-                if evt.type = EventType.PUSH:
+                if evt.type == EventType.PUSH:
 
                     t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
 
@@ -353,15 +365,17 @@ class EventHandler:
                 else:
                     raise EventNotImplemented(evt.__dict__)
 
-            except StopIteration:
-                pass
+        #Stop received inside event loop
+        except StopIteration:
+            pass
 
-            except KeyboardInterrupt:
-                print("Manual interuption of PowerMate run loop")
+        #External Keyboard stop
+        except KeyboardInterrupt:
+            print("Manual interuption of PowerMate run loop")
 
-            #Cleanup
-            finally:
-                self.loop.stop()
+        #Cleanup
+        finally:
+            self.loop.stop()
 
 
     @asyncio.coroutine
