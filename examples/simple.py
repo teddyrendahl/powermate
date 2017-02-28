@@ -51,3 +51,9 @@ class SimplePowerMate(PowerMateBase):
         print("PowerMate has been released after {} ms")
         if elapsed > 1000:
             return Event.stop()
+
+
+if __name__ == "__main__":
+
+    pm = SimplePowerMate()
+    pm()
