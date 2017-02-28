@@ -72,7 +72,7 @@ class Event:
 
         Returns
         -------
-        event : :class:`.LedEvent`
+        event : :class:`.Event`
         """
         return cls(0, 0,  EventType.STOP, 0, 0)
 
@@ -194,7 +194,7 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=int(percent/100. * self.MAX_BRIGHTNESS))
+        return cls(brightness=round(percent/100. * self.MAX_BRIGHTNESS))
 
 
 class EventStream:
