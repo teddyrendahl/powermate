@@ -1,3 +1,4 @@
+import fcntl
 from . import errors, event
 
 class PowerMateBase(event.EventHandler):
@@ -13,6 +14,19 @@ class PowerMateBase(event.EventHandler):
         Optional existing event loop if you would like to integrate multiple
         async objects
     """
+    def __init__(self, path, loop=None):
+        f = open(path, 'w')
+        try:
+            name = fcntl.ioctl(x, 0x80ff4506, chr(0)*256)
+            name.replace(chr(0),'')
+
+            if name != 'Griffin PowerMate':
+                raise OSError
+
+        except OSError:
+            raise ConnectionError("Device handle did not correspond "
+                                  "to connect to a Griffin PowerMate")
+
     def pulse(self):
         """
         Pulse the LED on the bottom of the PowerMate
