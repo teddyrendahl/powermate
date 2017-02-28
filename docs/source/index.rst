@@ -1,5 +1,6 @@
 PowerMate Python Driver
 -----------------------
+.. include:: ../../README.rst
 
 .. toctree::
    :maxdepth: 1
