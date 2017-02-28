@@ -27,10 +27,26 @@ class PowerMateBase(event.EventHandler):
             raise ConnectionError("Device handle did not correspond "
                                   "to connect to a Griffin PowerMate")
 
+
+
+    def on_start(self):
+        """
+        Method to be run on start of the event loop
+        """
+        pass
+
+
+    def on_exit(self):
+        """
+        Method to be run on completion of the event loop
+        """
+        pass
+
+
     def pulse(self):
         """
         Pulse the LED on the bottom of the PowerMate
-        
+
         Raises
         ------
         LoopError:
@@ -61,3 +77,13 @@ class PowerMateBase(event.EventHandler):
             raise errors.LoopError
 
         self._stream.send(event.LedEvent.brightness(percentage))
+
+
+    def __call__(self):
+        self.on_start()
+        super.__call__()
+        self.on_exit()
+
+
+    def __repr__(self):
+        return '<Griffin PowerMate ({})>'.format(self.path)
