@@ -1,20 +1,14 @@
-.. powermate documentation master file, created by
-   sphinx-quickstart on Mon Feb 27 16:54:48 2017.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to powermate's documentation!
-=====================================
+PowerMate Python Driver
+-----------------------
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: PowerMate:
+
+   powermate.rst
+   implementation.rst
+   events.rst
 
 
 
-Indices and tables
-==================
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
