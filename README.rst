@@ -30,8 +30,8 @@ loop, so they must have the ``@asyncio.coroutine`` function wrap
 
 Complex interactions between driver actions and the PowerMate are possible by
 creating coroutines that return events. For instance, the ``pressed`` function
-in the above example sends an :meth:`.Event.stop` back to the PowerMate to
-indicate we are done listening to the USB connection.
+in the above example sends an ``.Event.stop`` back to the PowerMate to indicate
+we are done listening to the USB connection.
 
 After you have created your PowerMate, simply call the class and the listener
 will begin watching the USB connection for PowerMate events
