@@ -436,15 +436,17 @@ class EventHandler:
 
         Parameters
         ----------
-        time ; float
+        time : float
             The amount of time in milliseconds that the button has been
             depressed
 
+
         .. note::
-            
+
             This will not be called if the PowerMate is pressed and then
-            rotated. Instead, this is treated as just a rotated event, with
-            the ``pressed`` keyword set to ``True``
+            rotated. Instead, this is treated as just a rotated event, with the
+            pressed keyword set to True
+
         """
         logger.debug('Powermate released after {} ms'.format(time))
 

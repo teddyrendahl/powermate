@@ -7,7 +7,7 @@ can easily map PowerMate actions into Python functions.
 
 
 The main functions a wrapper can eimplement are :meth:`.on_start`,
-:meth:`.on_exit, :meth:`.rotated`, :meth:`.pressed`, and :meth:`.released.
+:meth:`.on_exit`, :meth:`.rotated`, :meth:`.pressed`, and :meth:`.released`
 Please not which of these are ``@asyncio.coroutine`` functions as they will
 need to have that wrap to be called properly in the event loop.
 
