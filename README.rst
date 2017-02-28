@@ -18,13 +18,12 @@ but should be memorable as this how you point the API to the correct USB port
 
 Use Cases
 ---------
-The main class in the powermate driver is the :class:`powermate.PowerMateBase`.
-This wraps the event handling streams into rewritable Python functions. Simply
-create a new class who inherits from :class:`.PowerMateBase` and rewrite the
-methods :meth:`.rotated`, :meth:`.pressed`: and :meth:`.released` to map the
-PowerMate actions to commands. It is important to note that these are used in
-the ``asycnio`` run loop, so they must have the ``@asyncio.coroutine`` function
-wrap
+The main class in the powermate driver is the ``powermate.PowerMateBase`` This
+wraps the event handling streams into rewritable Python functions. Simply
+create a new class who inherits from ``PowerMateBase`` and rewrite the
+``rotated``, ``pressed`` and ``released`` to map the PowerMate actions to
+commands. It is important to note that these are used in the ``asycnio`` run
+loop, so they must have the ``@asyncio.coroutine`` function wrap
 
 .. literalinclude:: /../../examples/simple.py
     :pyobject: SimplePowerMate
