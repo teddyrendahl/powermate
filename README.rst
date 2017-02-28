@@ -1,6 +1,6 @@
 Powermate
 =========
-A small Python driver for using the `Griffin Powermate <https://store.griffintechnology.com/powermate>` in Linux 
+A small Python driver for using the `Griffin Powermate <https://store.griffintechnology.com/powermate/>`_ in Linux 
 
 .. image:: https://store.griffintechnology.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/n/a/na16029_powermate_1.jpg
 
@@ -26,10 +26,8 @@ PowerMate actions to commands. It is important to note that these are used in
 the ``asycnio`` run loop, so they must have the ``@asyncio.coroutine`` function
 wrap
 
-.. literalinclude:: examples/simple.py
-    :caption: Example
+.. literalinclude:: /../../examples/simple.py
     :pyobject: SimplePowerMate
-    :linenos:
 
 Complex interactions between driver actions and the PowerMate are possible by
 creating coroutines that return events. For instance, the ``pressed`` function

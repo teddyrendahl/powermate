@@ -1,3 +1,23 @@
+"""
+PowerMateBase is the main driver for the powermate library. The class is built
+on top of the :class:`.EventHandler` to stream events from the PowerMate USB
+connection into asyncio.coroutine functions. By taking this base class, and
+using it as a child of a more complex, application specific PowerMate class you
+can easily map PowerMate actions into Python functions.
+
+
+The main functions a wrapper can eimplement are :meth:`.on_start`,
+:meth:`.on_exit, :meth:`.rotated`, :meth:`.pressed`, and :meth:`.released.
+Please not which of these are ``@asyncio.coroutine`` functions as they will
+need to have that wrap to be called properly in the event loop.
+
+In order to communicate back to the PowerMate in order to change the LED
+settings for stop the loop entirely. The methods can be rewritten to send
+events to return events. Many of the useful events are already available as
+class methods of :class:`.LedEvent` and :class:`.Event`.
+"""
+
+
 import fcntl
 from . import errors, event
 

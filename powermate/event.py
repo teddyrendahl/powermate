@@ -1,3 +1,19 @@
+"""
+These classes make up the backbone of the powermate module. The flow of
+operation starts at the :class:`.EventStream`, which serves as a generator
+receiving and sending commands to the file handles of the USB connnection.
+These are converted into either :class:`.Event` or a more specific
+implementation :class:`.LedEvent` objects. :class:`PowerMateBase` then
+implements the event handling who subscribes the stream and decides which
+coroutines to invoke based on the received Event and the internal state of the
+PowerMate.
+
+The only classes from this that will need to be invoked in most applications
+are the event objects that you want to send back to the PowerMate. The easiest
+way to create these is by using the classmethods :meth:`.Event.stop`,
+:meth:`LedEvent.pulse`, :meth:`.LedEvent.max`, :meth:`.LedEvent.off` and
+:meth:`.LedEvent.percent`
+"""
 import os
 import queue
 import struct
@@ -24,7 +40,6 @@ class EventType(Enum):
     MISC   = 0x04
     #API Defined
     STOP   = 0x06
-    INT    = 0x08
 
 class Event:
     """
@@ -424,6 +439,12 @@ class EventHandler:
         time ; float
             The amount of time in milliseconds that the button has been
             depressed
+
+        .. note::
+            
+            This will not be called if the PowerMate is pressed and then
+            rotated. Instead, this is treated as just a rotated event, with
+            the ``pressed`` keyword set to ``True``
         """
         logger.debug('Powermate released after {} ms'.format(time))
 
