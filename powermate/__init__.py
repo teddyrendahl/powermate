@@ -1,3 +1,3 @@
-import errors
-from event     import Event, LedEvent
-from powermate import PowerMateBase
+from .          import errors
+from .event     import Event, LedEvent
+from .powermate import PowerMateBase
