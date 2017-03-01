@@ -28,12 +28,11 @@ loop, so they must have the ``@asyncio.coroutine`` function wrap
 .. literalinclude:: /../../examples/simple.py
     :pyobject: SimplePowerMate
 
-.. literalinclude:: examples/simple.py
-    :pyobject: SimplePowerMate
+.. include:: examples/simple.py
 
 Complex interactions between driver actions and the PowerMate are possible by
 creating coroutines that return events. For instance, the ``pressed`` function
-in ``examples/simple.py`` sends an ``.Event.stop`` back to the PowerMate to indicate
+in this [example]( sends an ``.Event.stop`` back to the PowerMate to indicate
 we are done listening to the USB connection.
 
 After you have created your PowerMate, simply call the class and the listener
