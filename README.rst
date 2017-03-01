@@ -28,8 +28,6 @@ loop, so they must have the ``@asyncio.coroutine`` function wrap
 .. literalinclude:: /../../examples/simple.py
     :pyobject: SimplePowerMate
 
-.. include:: examples/simple.py
-
 Complex interactions between driver actions and the PowerMate are possible by
 creating coroutines that return events. For instance, the ``pressed`` function
 in this [example]( sends an ``.Event.stop`` back to the PowerMate to indicate
