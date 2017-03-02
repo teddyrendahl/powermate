@@ -34,7 +34,7 @@ class PowerMateBase(event.EventHandler):
         Optional existing event loop if you would like to integrate multiple
         async objects
     """
-    def __init__(self, path, loop=None):
+    def __init__(self, path='/dev/input/powermate', loop=None):
         f = open(path, 'w')
         try:
             name = fcntl.ioctl(f, 0x80ff4506, chr(0)*256).decode('utf-8')
