@@ -1,6 +1,6 @@
 """
 These classes make up the backbone of the powermate module. The flow of
-operation starts at the :class:`.EventStream`, which serves as a generator
+operation starts at the :class:`.Socket`, which serves as a generator
 receiving and sending commands to the file handles of the USB connnection.
 These are converted into either :class:`.Event` or a more specific
 implementation :class:`.LedEvent` objects. :class:`PowerMateBase` then
@@ -127,14 +127,19 @@ class LedEvent(Event):
     Parameters
     ----------
     brightness : int
+        Intensity of LED glow, maximum is 255
 
     speed : int
+        Speed of pulse, maximum is 255
 
-    pulse_type
+    pulse_type : int
+        Defines structure of pulse
 
-    asleep
+    asleep : int 
+        Defines asleep behavior
 
-    awake : 
+    awake : int
+        Defines awake behavior
     """
     MAX_BRIGHTNESS  =  MAX_BRIGHTNESS 
     MAX_PULSE_SPEED =  MAX_PULSE_SPEED
@@ -142,7 +147,7 @@ class LedEvent(Event):
     def __init__(self, brightness=0, speed=0,
            pulse_type=0, asleep=0, awake=0):
         super().__init__(0, 0, EventType.MISC, MSC_PULSELED, 0)
-        self.brightness = brightness or self.MAX_BRIGHTNESS
+        self.brightness = brightness
         self.speed      = speed
         self.pulse_type = pulse_type
         self.asleep     = asleep
@@ -230,6 +235,12 @@ class Socket:
     ----------
     path : str
         Filepath to Powermate USB
+    
+    Attributes
+    ----------
+    stream : generator
+        A generator that monitors the input socket, events sent the generator
+        using ``stream.send`` will also be written back into output
     """
     _event_size = EVENT_SIZE
 
@@ -403,6 +414,7 @@ class EventHandler:
                             else:
                                 if not self._depressed:
                                     logger.critical("Saw a release event without a pressed event")
+                                    elapsed = None
                                 #Store previous depressed time, and wipe away
                                 else:
                                     elapsed, self._depressed = t - self._depressed, None

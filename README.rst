@@ -34,11 +34,12 @@ in this [example]( sends an ``.Event.stop`` back to the PowerMate to indicate
 we are done listening to the USB connection.
 
 After you have created your PowerMate, simply call the class and the listener
-will begin watching the USB connection for PowerMate events
+will begin watching the USB connection for PowerMate events. If you used the
+``udev`` rules above it should look like this
 
 .. code::
 
     #Instantiate
-    pm = SimplePowerMate('input/powermate')
+    pm = SimplePowerMate('/dev/input/powermate')
     #Run
     pm()
