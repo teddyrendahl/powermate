@@ -1,5 +1,3 @@
-PowerMate Python Driver
------------------------
 .. include:: ../../README.rst
 
 .. toctree::
