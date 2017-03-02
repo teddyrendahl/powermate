@@ -219,7 +219,7 @@ class LedEvent(Event):
         return cls(brightness=round(percent/100. * MAX_BRIGHTNESS))
 
 
-class EventStream:
+class Socket:
     """
     Event Stream from the Powermate
 
@@ -341,7 +341,7 @@ class EventHandler:
     def __init__(self, path, loop=None):
 
         #Create Source
-        self._source = EventStream(path)
+        self._source = Socket(path)
 
         #Create asyncio event loop
         if loop is None:

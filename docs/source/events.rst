@@ -2,7 +2,7 @@ Event Handling
 ==============
 .. automodule:: powermate.event
 
-.. autoclass:: powermate.event.EventStream
+.. autoclass:: powermate.event.Socket
    :members:
 
 Event Types
