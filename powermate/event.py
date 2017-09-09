@@ -10,20 +10,30 @@ PowerMate.
 
 The only classes from this that will need to be invoked in most applications
 are the event objects that you want to send back to the PowerMate. The easiest
-way to create these is by using the classmethods :meth:`.Event.stop`,
+way to create these is by using the class methods :meth:`.Event.stop`,
 :meth:`LedEvent.pulse`, :meth:`.LedEvent.max`, :meth:`.LedEvent.off` and
 :meth:`.LedEvent.percent`
 """
+##############
+#  Standard  #
+##############
 import os
-import queue
 import struct
 import asyncio
 import logging
 import collections
 from enum import Enum
 
-logger = logging.getLogger(__name__)
+##############
+#  External  #
+##############
 
+##############
+#   Module   #
+##############
+from .errors import EventNotImplemented
+
+logger = logging.getLogger(__name__)
 
 EVENT_FORMAT = 'llHHi'
 EVENT_SIZE   = struct.calcsize(EVENT_FORMAT)
@@ -64,15 +74,13 @@ class Event:
 
     value: int
         Associated value with event
-
     """
-    def __init__(self, tv_sec, tv_usec, type, code, value):
+    def __init__(self, tv_sec, tv_usec, _type, code, value):
         self.tv_sec   = tv_sec
         self.tv_usec  = tv_usec
-        self.type     = type
+        self.type     = _type
         self.code     = code
         self.value    = value
-
 
     @property
     def raw(self):
@@ -81,7 +89,6 @@ class Event:
         """
         return struct.pack(EVENT_FORMAT, self.tv_sec, self.tv_usec,
                        self.type.value, self.code, self.value)
-
 
     @classmethod
     def stop(cls):
@@ -93,7 +100,6 @@ class Event:
         event : :class:`.Event`
         """
         return cls(0, 0,  EventType.STOP, 0, 0)
-
 
     @classmethod
     def from_raw(cls, data):
@@ -112,12 +118,10 @@ class Event:
         tv_sec, tv_usec, type, code, value = struct.unpack(EVENT_FORMAT, data)
         return cls(tv_sec, tv_usec, EventType(type), code, value)
 
-
     def __repr__(self):
         return '{}({})'.format(self.__class__.__name__,
                                ', '.join('{}={}'.format(k, getattr(self, k))
                                for k in self.__dict__ if not k.startswith('_')))
-
 
 class LedEvent(Event):
     """
@@ -153,7 +157,6 @@ class LedEvent(Event):
         self.asleep     = asleep
         self.awake      = awake
 
-
     @property
     def value(self):
         """
@@ -165,10 +168,10 @@ class LedEvent(Event):
                (self.asleep << 19) |
                (self.awake << 20))
 
+    #Silently ignore all value sets
     @value.setter
     def value(self, value):
         pass
-
 
     @classmethod
     def pulse(cls):
@@ -181,7 +184,6 @@ class LedEvent(Event):
         """
         return cls(speed=MAX_PULSE_SPEED, pulse_type=2, asleep=1, awake=1)
 
-
     @classmethod
     def max(cls):
         """
@@ -193,7 +195,6 @@ class LedEvent(Event):
         """
         return cls(brightness=MAX_BRIGHTNESS)
 
-
     @classmethod
     def off(cls):
         """
@@ -204,7 +205,6 @@ class LedEvent(Event):
         event : :class:`.LedEvent`
         """
         return cls(brightness=0)
-
 
     @classmethod
     def percent(cls, percent):
@@ -250,7 +250,6 @@ class Socket:
         self._input  = open(self.path, 'wb')  
         self.stream  = self._watch()
     
-
     def send(self, evt):
         """
         Send an event to the Powermate without viewing respsonse
@@ -260,73 +259,59 @@ class Socket:
         evt : :class:`.Event`
             Sent event
         """
+        #Don't send None
         if not evt:
             return
-
+        #Only send events
         if not isinstance(evt, Event):
             raise TypeError(evt)
-
-        logger.debug("Sending event {} ...".format(evt))
-        
+        logger.debug("Sending event %s ...", evt)
         #Write the value
         self._input.write(evt.raw)
         self._input.flush()
-
-
 
     def _watch(self):
         data  = b''
         event = None
         #Open file stream
         with self._output as stream:
-            
             #Always start from EOF
             stream.seek(0, os.SEEK_END)
-
             #Continually monitor USB
             while True:
-                
                 #Send an event and check response
                 ret = yield event
-
                 try:
                     data += stream.read(self._event_size)
-                
                 except OSError as e:
-
                     if e.errno == 11:
                         raise ConnectionError('PowerMate disconnected')
-
                     else:
                         raise
-
                 #When we have a full event
                 if len(data) >= self._event_size:
                     #Create Event object, and delete from collected stream
                     try:
+                        #Create an Event from the raw binary
                         event = Event.from_raw(data[:self._event_size])
-                        logger.debug("Received event {} ...".format(event))
+                        logger.debug("Received event %s ...", event)
                     except ValueError:
                         logger.critical('Unrecognized event value')
-
+                    #Discard last event from buffer
                     data  = data[self._event_size:]
-
                 #Otherwise send a blank event
                 else:
-                   event = None
-
-
+                    event = None
+                #If we received an event back
                 if ret:
                     #Stop if stop signal was sent
                     if ret.type == EventType.STOP:
                         logger.info("Received an event to stop the stream.")
                         raise StopIteration
-
                     #Otherwise, send to PowerMate stream
                     else:
                         self._input.write(event.raw)
                         self._input.flush()
-
 
 class EventHandler:
     """
@@ -350,105 +335,84 @@ class EventHandler:
     _pressed     = False
 
     def __init__(self, path, loop=None):
-
         #Create Source
         self._source = Socket(path)
-
         #Create asyncio event loop
         if loop is None:
             loop = asyncio.get_event_loop()
-
         self.loop = loop
-
         #Keep asyncio task to handle exceptions
         self._task = None
         self._response_stack = collections.deque([None])
 
-
     @asyncio.coroutine
     def _run(self):
-
         last_result = None
-
         try:
-
             while True:
-
                 yield from asyncio.sleep(0.0001, loop=self.loop)
-    
                 #Send any responses from previous events back to stream
                 logger.debug("Waiting for event from PowerMate ...")
                 evt = self._source.stream.send(last_result)
-    
-    
                 #Process new events from stream
                 if evt:
-    
                     logger.debug('Proccessing event')
                     #On button event
                     if evt.type == EventType.PUSH:
                         logger.debug("Saw a push event") 
                         t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
-    
                         #On press
                         if evt.value:
                             #Change internal state to pressed
                             self._pressed   = True
                             self._rotated   = False
                             self._depressed = t
-    
                             #Trigger pressed coroutine
                             last_result = yield from self.pressed()
-    
                         #On release
                         else:
                             #Change internal state to released
                             self._pressed   = False
-    
                             #Ignore if any rotation has happened
                             if self._rotated:
                                 self._depressed = None                             
                                 last_result     = None 
-    
                             #Trigger release coroutine
                             else:
                                 if not self._depressed:
-                                    logger.critical("Saw a release event without a pressed event")
+                                    logger.critical("Saw a release event "
+                                                    "without a pressed event")
                                     elapsed = None
                                 #Store previous depressed time, and wipe away
                                 else:
-                                    elapsed, self._depressed = t - self._depressed, None
-
+                                    elapsed = t - self._depressed
+                                    self._depressed = None
                                 #Trigger released coroutine
                                 last_result = yield from self.released(elapsed)
-    
                     #On rotation event
                     elif evt.type == EventType.ROTATE:
                         #Change internal state to rotated
                         self._rotated = True
                         #Trigger rotate coroutine
-                        last_result = yield from self.rotated(evt.value, pressed=self._pressed)
-                    
+                        last_result = yield from self.rotated(evt.value,
+                                                              pressed=self._pressed)
+                    #Ignore empty events 
                     elif evt.type == EventType.NULL:
                         pass
-    
+                    #Bad event
                     else:
-                        logger.warning("Unrecoginzed event {}".format(evt))
+                        logger.warning("Unrecoginzed event %s", evt)
                         raise EventNotImplemented(evt.__dict__)
-                
         #Stop received inside event loop
         except StopIteration:
             logger.info("Received StopIteration Request")
-
         #External Keyboard stop
         except KeyboardInterrupt:
             print("Manual interuption of PowerMate run loop")
-
         #Cleanup
         finally:
             logger.info("Stopping the event loop")
             self.loop.stop()
-
 
     @asyncio.coroutine
     def rotated(self, value, pressed=False):
@@ -463,9 +427,8 @@ class EventHandler:
         pressed : bool
             Whether the button was depressed when rotated
         """
-        logger.debug('Powermate rotated {} while pressed : {}'
-                     ''.format(value, pressed))
-
+        logger.debug('Powermate rotated %s while pressed : %s',
+                     value, pressed)
 
     @asyncio.coroutine
     def pressed(self):
@@ -473,7 +436,6 @@ class EventHandler:
         Desired respsone upon button press
         """
         logger.debug('Powermate pressed')
-
 
     @asyncio.coroutine
     def released(self, time):
@@ -494,8 +456,7 @@ class EventHandler:
             pressed keyword set to True
 
         """
-        logger.debug('Powermate released after {} ms'.format(time))
-
+        logger.debug('Powermate released after %s ms', time)
 
     @asyncio.coroutine
     def stop(self):
@@ -503,7 +464,6 @@ class EventHandler:
         Stop the current run
         """
         return Event.stop()
-
 
     def _clear(self):
         """
@@ -514,16 +474,12 @@ class EventHandler:
         self._pressed   = False
         self._depressed = None
 
-
     def __call__(self):
-
         #Clear all metadata from previous runs
         self._clear()
-
         #Create task and kick off loop
         self._task = self.loop.create_task(self._run())
         self.loop.run_forever()
-
         #Handle any exception raised during the loop
         if self._task.done and not self._task.cancelled():
             exc = self._task.exception()
