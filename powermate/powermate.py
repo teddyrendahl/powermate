@@ -28,13 +28,16 @@ are already available as class methods of :class:`.LedEvent` and
 ##############
 #   Module   #
 ##############
-from .event  import EventHandler
+from .event  import LedEvent, EventHandler
 from .errors import PowermateIsRunning  
 
 class PowerMateBase(EventHandler):
     """
     Basic Powermate
 
+    A subclass of :class:`EventHandler` with a number of conveince methods
+    added for ease of use.
+    
     Parameters
     ----------
     path : str
@@ -44,23 +47,9 @@ class PowerMateBase(EventHandler):
         Optional existing event loop if you would like to integrate multiple
         async objects
     """
-    def __init__(self, path, loop=None):
-        f = open(path, 'w')
-        try:
-            name = fcntl.ioctl(f, 0x80ff4506, chr(0)*256).decode('utf-8')
-            name.replace('\x00','')
-            if 'Griffin PowerMate' not in name:
-                raise OSError("Path does not correspond to Griffin PowerMate")
-
-        except OSError:
-            raise ConnectionError("Device handle did not correspond "
-                                  "to connect to a Griffin PowerMate")
-        #Initialize EventHandler
-        super().__init__(path, loop=loop)
-
     def on_start(self):
         """
-        Method to be called prior to thestart of the event loop
+        Method to be called prior to thestart of thedevent loop
         """
         pass
 
@@ -84,7 +73,7 @@ class PowerMateBase(EventHandler):
             raise PowermateIsRunning("Event loop is running, send events by "
                                      "returning them from coroutines")
         #Write to stream
-        self._source.send(event.LedEvent.pulse())
+        self._source.send(LedEvent.pulse())
 
     def illuminate(self, percent=100):
         """
@@ -106,7 +95,7 @@ class PowerMateBase(EventHandler):
             raise PowermateIsRunning("Event loop is running, send events by "
                                      "returning them from coroutines")
         #Write to stream
-        self._source.send(event.LedEvent.percent(percent))
+        self._source.send(LedEvent.percent(percent))
 
     def run(self):
         """
@@ -116,5 +105,7 @@ class PowerMateBase(EventHandler):
         super().__call__()
         self.on_exit()
 
+    __call__ = run
+
     def __repr__(self):
-        return '<Griffin PowerMate ({})>'.format(self.path)
+        return '<Griffin PowerMate ({})>'.format(self._source.path)
