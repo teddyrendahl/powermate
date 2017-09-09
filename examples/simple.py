@@ -2,6 +2,7 @@
 A simple instantiation of the PowerMate class to print actions as they occur
 """
 import asyncio
+import logging
 from powermate import Event, PowerMateBase
 
 
@@ -48,12 +49,13 @@ class SimplePowerMate(PowerMateBase):
         Run when the PowerMate is pressed
         """
         super().released(elapsed)
-        print("PowerMate has been released after {} ms")
-        if elapsed > 1000:
+        print("PowerMate has been released after {} ms".format(elapsed))
+        if elapsed > 2500:
             return Event.stop()
 
 
 if __name__ == "__main__":
-
-    pm = SimplePowerMate()
+#    logging.getLogger('powermate').setLevel(logging.DEBUG)
+#    logging.basicConfig()
+    pm = SimplePowerMate('/dev/input/powermate')
     pm()

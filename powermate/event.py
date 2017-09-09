@@ -1,6 +1,6 @@
 """
 These classes make up the backbone of the powermate module. The flow of
-operation starts at the :class:`.EventStream`, which serves as a generator
+operation starts at the :class:`.Socket`, which serves as a generator
 receiving and sending commands to the file handles of the USB connnection.
 These are converted into either :class:`.Event` or a more specific
 implementation :class:`.LedEvent` objects. :class:`PowerMateBase` then
@@ -29,12 +29,15 @@ EVENT_FORMAT = 'llHHi'
 EVENT_SIZE   = struct.calcsize(EVENT_FORMAT)
 
 MSC_PULSELED    = 0x01
+MAX_BRIGHTNESS  = 255
+MAX_PULSE_SPEED = 255
 
 class EventType(Enum):
     """
     Types of Events
     """
     #Internal
+    NULL   = 0x00
     PUSH   = 0x01
     ROTATE = 0x02
     MISC   = 0x04
@@ -77,7 +80,7 @@ class Event:
         Converted event information expressed as binary 
         """
         return struct.pack(EVENT_FORMAT, self.tv_sec, self.tv_usec,
-                       self.type.value(), self.code, self.value)
+                       self.type.value, self.code, self.value)
 
 
     @classmethod
@@ -124,26 +127,31 @@ class LedEvent(Event):
     Parameters
     ----------
     brightness : int
+        Intensity of LED glow, maximum is 255
 
     speed : int
+        Speed of pulse, maximum is 255
 
-    pulse_type
+    pulse_type : int
+        Defines structure of pulse
 
-    asleep
+    asleep : int 
+        Defines asleep behavior
 
-    awake : 
+    awake : int
+        Defines awake behavior
     """
-    MAX_BRIGHTNESS  = 255
-    MAX_PULSE_SPEED = 255
+    MAX_BRIGHTNESS  =  MAX_BRIGHTNESS 
+    MAX_PULSE_SPEED =  MAX_PULSE_SPEED
 
     def __init__(self, brightness=0, speed=0,
            pulse_type=0, asleep=0, awake=0):
-        self.brightness = brightness or self.MAX_BRIGHTNESS
+        super().__init__(0, 0, EventType.MISC, MSC_PULSELED, 0)
+        self.brightness = brightness
         self.speed      = speed
         self.pulse_type = pulse_type
         self.asleep     = asleep
         self.awake      = awake
-        super().__init__(0, 0, EventType.MISC, MSC_PULSELED, 0)
 
 
     @property
@@ -157,6 +165,10 @@ class LedEvent(Event):
                (self.asleep << 19) |
                (self.awake << 20))
 
+    @value.setter
+    def value(self, value):
+        pass
+
 
     @classmethod
     def pulse(cls):
@@ -167,7 +179,7 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(speed=self.MAX_PULSE_SPEED, pulse_type=2, asleep=1, awake=1)
+        return cls(speed=MAX_PULSE_SPEED, pulse_type=2, asleep=1, awake=1)
 
 
     @classmethod
@@ -179,7 +191,7 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=self.MAX_BRIGHTNESS)
+        return cls(brightness=MAX_BRIGHTNESS)
 
 
     @classmethod
@@ -209,10 +221,10 @@ class LedEvent(Event):
         -------
         event : :class:`.LedEvent`
         """
-        return cls(brightness=round(percent/100. * self.MAX_BRIGHTNESS))
+        return cls(brightness=round(percent/100. * MAX_BRIGHTNESS))
 
 
-class EventStream:
+class Socket:
     """
     Event Stream from the Powermate
 
@@ -223,12 +235,21 @@ class EventStream:
     ----------
     path : str
         Filepath to Powermate USB
+    
+    Attributes
+    ----------
+    stream : generator
+        A generator that monitors the input socket, events sent the generator
+        using ``stream.send`` will also be written back into output
     """
     _event_size = EVENT_SIZE
 
     def __init__(self, path):
-        self.path
-
+        self.path    = path
+        self._output = open(self.path, 'rb')  
+        self._input  = open(self.path, 'wb')  
+        self.stream  = self._watch()
+    
 
     def send(self, evt):
         """
@@ -239,30 +260,38 @@ class EventStream:
         evt : :class:`.Event`
             Sent event
         """
+        if not evt:
+            return
+
         if not isinstance(evt, Event):
             raise TypeError(evt)
 
-        logger.debug("Sending event {} ...".format(event))
+        logger.debug("Sending event {} ...".format(evt))
+        
+        #Write the value
+        self._input.write(evt.raw)
+        self._input.flush()
 
-        with open(path, 'wb') as stream:
-            stream.write(evt.raw)
-            stream.flush()
 
 
-    def __iter__(self):
-        data = b''
-
+    def _watch(self):
+        data  = b''
+        event = None
         #Open file stream
-        with open(path, 'rb') as stream:
+        with self._output as stream:
+            
             #Always start from EOF
-            path.seek(0, os.SEEK_END)
+            stream.seek(0, os.SEEK_END)
 
             #Continually monitor USB
             while True:
+                
+                #Send an event and check response
+                ret = yield event
 
                 try:
                     data += stream.read(self._event_size)
-
+                
                 except OSError as e:
 
                     if e.errno == 11:
@@ -272,18 +301,20 @@ class EventStream:
                         raise
 
                 #When we have a full event
-                if len(data) >= EVENT_SIZE:
+                if len(data) >= self._event_size:
                     #Create Event object, and delete from collected stream
-                    event = Event.from_raw(data[:self._event_size])
-                    logger.debug("Received event {} ...".format(event))
+                    try:
+                        event = Event.from_raw(data[:self._event_size])
+                        logger.debug("Received event {} ...".format(event))
+                    except ValueError:
+                        logger.critical('Unrecognized event value')
+
                     data  = data[self._event_size:]
 
                 #Otherwise send a blank event
                 else:
                    event = None
 
-                #Send an event and check response
-                ret = yield event
 
                 if ret:
                     #Stop if stop signal was sent
@@ -293,7 +324,8 @@ class EventStream:
 
                     #Otherwise, send to PowerMate stream
                     else:
-                        self.send(evt)
+                        self._input.write(event.raw)
+                        self._input.flush()
 
 
 class EventHandler:
@@ -320,11 +352,12 @@ class EventHandler:
     def __init__(self, path, loop=None):
 
         #Create Source
-        self._source = EventStream(path)
+        self._source = Socket(path)
 
         #Create asyncio event loop
         if loop is None:
             loop = asyncio.get_event_loop()
+
         self.loop = loop
 
         #Keep asyncio task to handle exceptions
@@ -339,61 +372,73 @@ class EventHandler:
 
         try:
 
-            yield from asyncio.sleep(0.0001, loop=self.loop)
+            while True:
 
-            #Send any responses from previous events back to stream
-            ret = resp_stack.pop()
-            evt = self._source.send(last_result)
-
-
-            #Process new events from stream
-            if evt:
-
-                logger.debug('Proccessing event')
-                #On button event
-                if evt.type == EventType.PUSH:
-
-                    t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
-
-                    #On press
-                    if not evt.value:
-                        #Change internal state to pressed
-                        self._pressed   = True
-                        self._rotated   = False
-                        self._depressed = t
-
-                        #Trigger pressed coroutine
-                        last_result = yield from self.pressed()
-
-                    #On release
-                    else:
-                        #Change internal state to released
-                        self._pressed   = False
-
-                        #Ignore if any rotation has happened
-                        if self._rotated:
-                            return
-
-                        #Trigger release coroutine
+                yield from asyncio.sleep(0.0001, loop=self.loop)
+    
+                #Send any responses from previous events back to stream
+                logger.debug("Waiting for event from PowerMate ...")
+                evt = self._source.stream.send(last_result)
+    
+    
+                #Process new events from stream
+                if evt:
+    
+                    logger.debug('Proccessing event')
+                    #On button event
+                    if evt.type == EventType.PUSH:
+                        logger.debug("Saw a push event") 
+                        t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
+    
+                        #On press
+                        if evt.value:
+                            #Change internal state to pressed
+                            self._pressed   = True
+                            self._rotated   = False
+                            self._depressed = t
+    
+                            #Trigger pressed coroutine
+                            last_result = yield from self.pressed()
+    
+                        #On release
                         else:
-                            #Store previous depressed time, and wipe away
-                            elapsed, self._depressed = t - self._depressed, None
-                            #Trigger released coroutine
-                            last_result = yield from self.released(elapsed)
+                            #Change internal state to released
+                            self._pressed   = False
+    
+                            #Ignore if any rotation has happened
+                            if self._rotated:
+                                self._depressed = None                             
+                                last_result     = None 
+    
+                            #Trigger release coroutine
+                            else:
+                                if not self._depressed:
+                                    logger.critical("Saw a release event without a pressed event")
+                                    elapsed = None
+                                #Store previous depressed time, and wipe away
+                                else:
+                                    elapsed, self._depressed = t - self._depressed, None
 
-                #On rotation event
-                elif evt.type == EventType.ROTATE:
-                    #Change internal state to rotated
-                    self._rotated = True
-                    #Trigger rotate coroutine
-                    last_result = yield from self.rotate(evt.value, pressed=self._pressed)
-
-                else:
-                    raise EventNotImplemented(evt.__dict__)
-
+                                #Trigger released coroutine
+                                last_result = yield from self.released(elapsed)
+    
+                    #On rotation event
+                    elif evt.type == EventType.ROTATE:
+                        #Change internal state to rotated
+                        self._rotated = True
+                        #Trigger rotate coroutine
+                        last_result = yield from self.rotated(evt.value, pressed=self._pressed)
+                    
+                    elif evt.type == EventType.NULL:
+                        pass
+    
+                    else:
+                        logger.warning("Unrecoginzed event {}".format(evt))
+                        raise EventNotImplemented(evt.__dict__)
+                
         #Stop received inside event loop
         except StopIteration:
-            pass
+            logger.info("Received StopIteration Request")
 
         #External Keyboard stop
         except KeyboardInterrupt:
@@ -401,6 +446,7 @@ class EventHandler:
 
         #Cleanup
         finally:
+            logger.info("Stopping the event loop")
             self.loop.stop()
 
 
@@ -469,7 +515,7 @@ class EventHandler:
         self._depressed = None
 
 
-    def __call__():
+    def __call__(self):
 
         #Clear all metadata from previous runs
         self._clear()

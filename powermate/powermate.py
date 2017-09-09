@@ -34,20 +34,20 @@ class PowerMateBase(event.EventHandler):
         Optional existing event loop if you would like to integrate multiple
         async objects
     """
-    def __init__(self, path, loop=None):
+    def __init__(self, path='/dev/input/powermate', loop=None):
         f = open(path, 'w')
         try:
-            name = fcntl.ioctl(x, 0x80ff4506, chr(0)*256)
-            name.replace(chr(0),'')
-
-            if name != 'Griffin PowerMate':
-                raise OSError
+            name = fcntl.ioctl(f, 0x80ff4506, chr(0)*256).decode('utf-8')
+            name.replace('\x00','')
+            print(name)
+            if 'Griffin PowerMate' not in name:
+                raise OSError("Path does not correspond to Griffin PowerMate")
 
         except OSError:
             raise ConnectionError("Device handle did not correspond "
                                   "to connect to a Griffin PowerMate")
 
-
+        super().__init__(path, loop=loop)
 
     def on_start(self):
         """
@@ -75,7 +75,7 @@ class PowerMateBase(event.EventHandler):
         if self.loop.is_running():
             raise errors.LoopError
 
-        self._stream.send(event.LedEvent.pulse())
+        self._source.send(event.LedEvent.pulse())
 
 
     def illuminate(self, percent=100):
@@ -96,12 +96,12 @@ class PowerMateBase(event.EventHandler):
         if self.loop.is_running():
             raise errors.LoopError
 
-        self._stream.send(event.LedEvent.brightness(percentage))
+        self._source.send(event.LedEvent.percent(percent))
 
 
     def __call__(self):
         self.on_start()
-        super.__call__()
+        super().__call__()
         self.on_exit()
 
 
