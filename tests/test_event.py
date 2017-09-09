@@ -1,5 +1,17 @@
+##############
+#  Standard  #
+##############
+
+##############
+#  External  #
+##############
+
+##############
+#   Module   #
+##############
 import powermate
 
+#Raw Event Binary
 raw_evt = b'\x8f\n\x16\x00\x00\x00\x00\x00\x84\x10\x18'\
           b'\xb6\x00\x00\x00\x00\x01\x00\x00\x01\x01\x00'\
           b'\x00\x00'
