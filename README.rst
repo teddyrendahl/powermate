@@ -1,5 +1,14 @@
 Powermate Python Driver
 =======================
+.. image:: https://travis-ci.org/teddyrendahl/powermate.svg?branch=master
+    :target: https://travis-ci.org/teddyrendahl/powermate
+
+.. image:: https://codecov.io/gh/teddyrendahl/powermate/branch/master/graph/badge.svg
+  :target: https://codecov.io/gh/teddyrendahl/powermate
+
+.. image:: https://landscape.io/github/teddyrendahl/powermate/master/landscape.svg?style=flat
+   :target: https://landscape.io/github/teddyrendahl/powermate/master
+
 A small Python driver for using the `Griffin Powermate <https://store.griffintechnology.com/powermate/>`_ in Linux 
 
 .. image:: https://store.griffintechnology.com/media/catalog/product/cache/1/image/9df78eab33525d08d6e5fb8d27136e95/n/a/na16029_powermate_1.jpg
