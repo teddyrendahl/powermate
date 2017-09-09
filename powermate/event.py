@@ -294,7 +294,7 @@ class Socket:
                     try:
                         #Create an Event from the raw binary
                         event = Event.from_raw(data[:self._event_size])
-                        logger.debug("Received event %s ...", event)
+                        logger.debug("Received %s ...", event)
                     except ValueError:
                         logger.critical('Unrecognized event value')
                     #Discard last event from buffer
@@ -304,14 +304,8 @@ class Socket:
                     event = None
                 #If we received an event back
                 if ret:
-                    #Stop if stop signal was sent
-                    if ret.type == EventType.STOP:
-                        logger.info("Received an event to stop the stream.")
-                        raise StopIteration
-                    #Otherwise, send to PowerMate stream
-                    else:
-                        self._input.write(event.raw)
-                        self._input.flush()
+                    self._input.write(event.raw)
+                    self._input.flush()
 
 class EventHandler:
     """
@@ -349,17 +343,19 @@ class EventHandler:
     def _run(self):
         last_result = None
         try:
+            logger.debug("Listening to event stream ...")
             while True:
                 yield from asyncio.sleep(0.0001, loop=self.loop)
+                #Stop the loop if requested via a user function
+                if last_result and last_result.type == EventType.STOP:
+                    logger.info("Received request to stop listening ...")
+                    raise StopIteration
                 #Send any responses from previous events back to stream
-                logger.debug("Waiting for event from PowerMate ...")
                 evt = self._source.stream.send(last_result)
                 #Process new events from stream
                 if evt:
-                    logger.debug('Proccessing event')
                     #On button event
                     if evt.type == EventType.PUSH:
-                        logger.debug("Saw a push event") 
                         t = (evt.tv_sec*10**3) + (evt.tv_usec*10**-3)
                         #On press
                         if evt.value:
@@ -373,22 +369,18 @@ class EventHandler:
                         else:
                             #Change internal state to released
                             self._pressed   = False
-                            #Ignore if any rotation has happened
-                            if self._rotated:
-                                self._depressed = None                             
-                                last_result     = None 
-                            #Trigger release coroutine
+                            if not self._depressed:
+                                logger.critical("Saw a release event "
+                                                "without a pressed event")
+                                elapsed = None
+                            #Store previous depressed time, and wipe away
                             else:
-                                if not self._depressed:
-                                    logger.critical("Saw a release event "
-                                                    "without a pressed event")
-                                    elapsed = None
-                                #Store previous depressed time, and wipe away
-                                else:
-                                    elapsed = t - self._depressed
-                                    self._depressed = None
-                                #Trigger released coroutine
-                                last_result = yield from self.released(elapsed)
+                                elapsed = t - self._depressed
+                                self._depressed = None
+                            #Trigger released coroutine
+                            last_result = yield from self.released(
+                                                     elapsed,
+                                                     rotated=self._rotated)
                     #On rotation event
                     elif evt.type == EventType.ROTATE:
                         #Change internal state to rotated
@@ -405,13 +397,13 @@ class EventHandler:
                         raise EventNotImplemented(evt.__dict__)
         #Stop received inside event loop
         except StopIteration:
-            logger.info("Received StopIteration Request")
+            pass
         #External Keyboard stop
         except KeyboardInterrupt:
-            print("Manual interuption of PowerMate run loop")
+            print("Manual interruption of PowerMate run loop")
         #Cleanup
         finally:
-            logger.info("Stopping the event loop")
+            logger.debug("Stopping the event loop")
             self.loop.stop()
 
     @asyncio.coroutine
@@ -438,7 +430,7 @@ class EventHandler:
         logger.debug('Powermate pressed')
 
     @asyncio.coroutine
-    def released(self, time):
+    def released(self, time, rotated=False):
         """
         Desired response upon button release
 
@@ -448,13 +440,8 @@ class EventHandler:
             The amount of time in milliseconds that the button has been
             depressed
 
-
-        .. note::
-
-            This will not be called if the PowerMate is pressed and then
-            rotated. Instead, this is treated as just a rotated event, with the
-            pressed keyword set to True
-
+        rotated : bool
+            Whether the Powermate was rotated during the press event
         """
         logger.debug('Powermate released after %s ms', time)
 
