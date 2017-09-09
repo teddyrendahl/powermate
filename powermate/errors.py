@@ -4,7 +4,7 @@ class EventNotImplemented(NotImplementedError):
     """
     pass
 
-class LoopError(Exception):
+class PowermateIsRunning(Exception):
     """
     Exception raised when send function called at an inappropriate time
     """
