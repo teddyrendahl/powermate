@@ -12,29 +12,36 @@ import argparse
 from powermate import LedEvent, PowerMateBase
 
 class HotPowerMate(PowerMateBase):
+    """
+    Hot/Cold game for PowerMate
 
-    press_multipler = 2
+    Parameters
+    ----------
+    path : str
 
-    def __init__(self, path, target=84):
+    target : int, optional
+        Target value that will have the brightest LED setting
+    """
+    def __init__(self, path, target=50):
         super().__init__(path)
-
         #Internal Warmth Parameters
         self.value    = 0
         self.target   = target
-
         #Turn off LED when not running
         self.on_exit()
 
-
     def on_start(self):
+        """
+        Set the LED to the starting brightness
+        """
         #Set the LED to the starting brightness
         self._stream.send(self.warmth)
 
-
     def on_exit(self):
-        #Turn off LED
+        """
+        Turn of the LED when the loop is not running
+        """
         self.illuminate(0)
-
 
     @asyncio.coroutine
     def rotated(self, value, pressed=False):
@@ -42,35 +49,26 @@ class HotPowerMate(PowerMateBase):
         Reimplementation of rotate method to reset the LED on every rotation.
         If the button is pressed while rotated move twice as fast
         """
-        super().rotated(val, pressed=pressed)
         if pressed:
             value *= self.press_multiplier
 
         self.value += value
         return self.warmth
 
-
     @asyncio.coroutine
-    def released(self, elapsed):
+    def released(self, elapsed, rotated):
         """
         Reimplementation of button release to stop the demo if button is
         pressed for more than 2 seconds
         """
-        super().released(elapsed)
         if elapsed > 2000:
             return Event.stop()
-
 
     @property
     def warmth(self):
         """
         The LedEvent based on the distance from the target
         """
+        #Distance from target
         d = math.fabs(self.value - self.target)
-        return LedEvent.percent(LedEvent.MAX_BRIGHTNESS*(1. - d/self.target))
-
-
-
-if __name__ == '__main__':
-    pm = HotPowerMate(path)
-    pm()
+        return self.illuminate(1. - d/self.target)
