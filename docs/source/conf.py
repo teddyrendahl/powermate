@@ -25,10 +25,11 @@
 # -- General configuration ------------------------------------------------
 import os
 import sys
-import sphinx_rtd_theme
 
-module_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../../')
+module_path   = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../../')
+examples_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'../../examples/')
 sys.path.insert(0,module_path)
+sys.path.insert(0,examples_path)
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #

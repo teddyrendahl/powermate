@@ -29,15 +29,21 @@ are already available as class methods of :class:`.LedEvent` and
 #   Module   #
 ##############
 from .event  import LedEvent, EventHandler
-from .errors import PowermateIsRunning  
 
 class PowerMateBase(EventHandler):
     """
     Basic Powermate
 
-    A subclass of :class:`EventHandler` with a number of conveince methods
-    added for ease of use.
-    
+    A subclass of :class:`EventHandler` with a number of conveinence methods
+    added for ease of use. By using :meth:`.rotate`, :meth:`.pressed` and
+    :meth:`.released` you can map five distinct events into Python functions:
+
+    - Pressing the PowerMate down
+    - Releasing the PowerMate
+    - Rotating the PowerMate
+    - Rotating the PowerMate while pressed
+    - Releasing the PowerMate after a rotation
+
     Parameters
     ----------
     path : str
@@ -62,40 +68,34 @@ class PowerMateBase(EventHandler):
     def pulse(self):
         """
         Pulse the LED on the bottom of the PowerMate
-
-        Raises
-        ------
-        LoopError:
-            If this is called while the device stream is running
+        
+        If the loop is running this simply returns an LedEvent, otherwise
+        this handles writing the Event into the stream
         """
-        #Don't allow this method while loop is running
-        if self.loop.is_running():
-            raise PowermateIsRunning("Event loop is running, send events by "
-                                     "returning them from coroutines")
-        #Write to stream
-        self._source.send(LedEvent.pulse())
+        evt = LedEvent.pulse()
+        #Don't send the event while loop is running
+        if not self.loop.is_running():
+            self._source.send(evt)
+        return evt
 
     def illuminate(self, percent=100):
         """
         Illuminate the LED on the bottom of the PowerMate
+        
+        If the loop is running this simply returns an LedEvent, otherwise
+        this handles writing the Event into the stream
 
         Parameters
         ----------
         brightness : float, optional
             Percentage of maximum brightness to set the LED. By default, this
             is 1., setting the LED to the brightest possible setting
-
-        Raises
-        ------
-        LoopError:
-            If this is called while the device stream is running
         """
-        #Don't allow this method while loop is running
-        if self.loop.is_running():
-            raise PowermateIsRunning("Event loop is running, send events by "
-                                     "returning them from coroutines")
-        #Write to stream
-        self._source.send(LedEvent.percent(percent))
+        evt = LedEvent.percent(percent)
+        #Don't send the event while loop is running
+        if not self.loop.is_running():
+            self._source.send(evt)
+        return evt
 
     def run(self):
         """

@@ -5,7 +5,7 @@
 
    powermate.rst
    events.rst
-
+   examples.rst
 
 
 
