@@ -14,7 +14,7 @@ import pytest
 #   Module   #
 ##############
 import powermate
-from powermate.event import Event, EventType
+from powermate.event import LedEvent, Event, EventType
 
 events = [
     #Regular Push
@@ -58,13 +58,15 @@ class CountingPowerMate(powermate.PowerMateBase):
         self.twists         = 0
         self.twist_releases = 0 
         super().__init__(path, loop=loop)
-        #Replace output with PseudoStream
+        #Replace output with PseudoStream / input with file-like BytesIO
         self._source._output = PseudoStream(events)
+        self._source._input  = io.BytesIO()
 
     @asyncio.coroutine
     def pressed(self):
         super().pressed()
         self.presses += 1
+        return self.illuminate(100)
 
     @asyncio.coroutine
     def rotated(self, value, pressed):
@@ -81,6 +83,7 @@ class CountingPowerMate(powermate.PowerMateBase):
         self.twist_releases += int(rotated)
         if time > 1000000:
             return Event.stop()
+        return self.illuminate(0)
 
 @pytest.fixture(scope='function')
 def counting_powermate():
@@ -97,3 +100,8 @@ def test_powermatebase(counting_powermate):
     assert counting_powermate.rotations      == 2
     assert counting_powermate.twists         == 5
     assert counting_powermate.twist_releases == 1
+    #Check that we wrote back events to the Powermate
+    counting_powermate._source._input.seek(0)
+    _bytes = counting_powermate._source._input.read()
+    assert LedEvent.max().raw in _bytes
+    assert LedEvent.off().raw in _bytes
