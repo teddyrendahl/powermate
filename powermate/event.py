@@ -281,6 +281,11 @@ class Socket:
             while True:
                 #Send an event and check response
                 ret = yield event
+                #If we received an event back
+                if ret:
+                    logger.debug("Writing %s back to PowerMate ...", ret)
+                    self._input.write(ret.raw)
+                    self._input.flush()
                 try:
                     data += stream.read(self._event_size)
                 except OSError as e:
@@ -302,10 +307,6 @@ class Socket:
                 #Otherwise send a blank event
                 else:
                     event = None
-                #If we received an event back
-                if ret:
-                    self._input.write(event.raw)
-                    self._input.flush()
 
 class EventHandler:
     """
@@ -352,6 +353,7 @@ class EventHandler:
                     raise StopIteration
                 #Send any responses from previous events back to stream
                 evt = self._source.stream.send(last_result)
+                last_result = None
                 #Process new events from stream
                 if evt:
                     #On button event
