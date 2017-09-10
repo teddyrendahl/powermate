@@ -2,8 +2,8 @@
 An example use of the PowerMateBase to play a game of Hot/Cold
 
 Spin the powermate and watch the LED as it glows brighter the closer you get to
-the target value. Press and rotate the wheel to increase the speed of travel.
-Finally to exit hold and release the button for greater than two seconds
+the target value.  Finally to exit hold and release the button for greater than
+two seconds
 """
 
 import math
@@ -47,11 +47,7 @@ class HotPowerMate(PowerMateBase):
     def rotated(self, value, pressed=False):
         """
         Reimplementation of rotate method to reset the LED on every rotation.
-        If the button is pressed while rotated move twice as fast
         """
-        if pressed:
-            value *= self.press_multiplier
-
         self.value += value
         return self.warmth
 
